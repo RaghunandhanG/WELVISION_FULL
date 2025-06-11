@@ -1,0 +1,48 @@
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+*.egg
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment variables
+.env.local
+.env.production
+
+# Logs
+*.log
+
+# Database files
+*.db
+*.sqlite3
+
+# Model files (if applicable)
+*.pt
+*.pth
+*.onnx
+models/
+
+# Temporary files
+*.tmp
+*.temp 

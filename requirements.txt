@@ -1,0 +1,31 @@
+# WelVision Application Requirements
+# Install using: pip install -r requirements.txt
+
+# Core dependencies (already included in Python/conda)
+# tkinter - included with Python
+# threading - included with Python  
+# multiprocessing - included with Python
+
+# Image and Computer Vision
+opencv-python>=4.8.0
+pillow>=10.0.0
+numpy>=1.24.0
+
+# Machine Learning
+ultralytics>=8.0.0
+
+# Industrial Communication  
+python-snap7>=2.0.0
+
+# Data Processing
+pandas>=2.0.0
+
+# GUI Components
+tkcalendar>=1.6.0
+
+# Database
+mysql-connector-python==8.2.0
+
+# Security & Configuration
+python-dotenv==1.0.0
+cryptography==41.0.7 
