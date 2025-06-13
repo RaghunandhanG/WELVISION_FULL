@@ -24,6 +24,54 @@ APP_TITLE = "WELVISION"
 APP_GEOMETRY = "1366x768"
 APP_BG_COLOR = "#0a2158"
 
+# UI Styling Constants
+UI_COLORS = {
+    "PRIMARY_BG": "#0a2158",
+    "SUCCESS": "#28a745",
+    "DANGER": "#dc3545", 
+    "WARNING": "#ffc107",
+    "INFO": "#007bff",
+    "SECONDARY": "#17a2b8",
+    "WHITE": "white",
+    "LIGHT_GRAY": "lightgray",
+    "BLACK": "black"
+}
+
+UI_FONTS = {
+    "TITLE": ("Arial", 18, "bold"),
+    "SUBTITLE": ("Arial", 14, "bold"),
+    "SECTION_HEADER": ("Arial", 12, "bold"),
+    "LABEL": ("Arial", 10),
+    "BUTTON": ("Arial", 12, "bold"),
+    "ENTRY": ("Arial", 10),
+    "SMALL": ("Arial", 9)
+}
+
+BUTTON_STYLES = {
+    "CREATE": {"bg": UI_COLORS["SUCCESS"], "fg": UI_COLORS["WHITE"]},
+    "UPDATE": {"bg": UI_COLORS["WARNING"], "fg": UI_COLORS["WHITE"]},
+    "DELETE": {"bg": UI_COLORS["DANGER"], "fg": UI_COLORS["WHITE"]},
+    "PRIMARY": {"bg": UI_COLORS["INFO"], "fg": UI_COLORS["WHITE"]},
+    "SECONDARY": {"bg": UI_COLORS["SECONDARY"], "fg": UI_COLORS["WHITE"]}
+}
+
+# Slider/Scale Widget Styling
+SLIDER_CONFIG = {
+    "from_": 1,
+    "to": 100,
+    "orient": "horizontal",
+    "length": 200,
+    "font": UI_FONTS["LABEL"]
+}
+
+SLIDER_LABEL_CONFIG = {
+    "font": UI_FONTS["LABEL"],
+    "fg": UI_COLORS["WHITE"],
+    "bg": UI_COLORS["PRIMARY_BG"],
+    "width": 5,
+    "anchor": "center"
+}
+
 # PLC Configuration
 PLC_CONFIG = {
     "IP": "172.17.8.17",

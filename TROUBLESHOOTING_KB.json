@@ -1,0 +1,227 @@
+{
+  "troubleshooting_kb": {
+    "version": "1.0",
+    "last_updated": "2025-06-13",
+    "categories": {
+      "installation": {
+        "python_version_error": {
+          "symptoms": ["Python version too old", "Syntax errors", "Module compatibility issues"],
+          "solution": "Upgrade to Python 3.7 or higher",
+          "commands": ["python --version", "python3 --version"],
+          "fix": "Download and install Python 3.7+ from python.org"
+        },
+        "missing_packages": {
+          "symptoms": ["ImportError", "ModuleNotFoundError", "No module named"],
+          "solution": "Install required packages",
+          "commands": [
+            "pip install mysql-connector-python",
+            "pip install opencv-python",
+            "pip install ultralytics",
+            "pip install Pillow",
+            "pip install numpy"
+          ],
+          "fix": "Run pip install commands for missing packages"
+        },
+        "tkinter_missing": {
+          "symptoms": ["No module named 'tkinter'", "ImportError: tkinter"],
+          "solution": "Install tkinter (Linux only)",
+          "commands": ["sudo apt-get install python3-tk"],
+          "fix": "Install python3-tk package on Linux systems"
+        }
+      },
+      "database": {
+        "mysql_not_running": {
+          "symptoms": ["Can't connect to MySQL server", "Connection refused", "MySQL service not found"],
+          "solution": "Start MySQL service",
+          "commands": {
+            "windows": ["net start mysql"],
+            "linux": ["sudo systemctl start mysql", "sudo systemctl enable mysql"]
+          },
+          "fix": "Start MySQL service using appropriate command for your OS"
+        },
+        "database_not_exist": {
+          "symptoms": ["Unknown database", "Database doesn't exist"],
+          "solution": "Create database",
+          "commands": [
+            "mysql -u root -p",
+            "CREATE DATABASE welvision_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+          ],
+          "fix": "Create the welvision_db database in MySQL"
+        },
+        "access_denied": {
+          "symptoms": ["Access denied for user", "Authentication failed"],
+          "solution": "Check credentials and user permissions",
+          "commands": [
+            "SELECT User FROM mysql.user;",
+            "SHOW GRANTS FOR 'username'@'localhost';"
+          ],
+          "fix": "Verify username/password in config.py and ensure user has proper privileges"
+        },
+        "tables_missing": {
+          "symptoms": ["Table doesn't exist", "Unknown table", "No such table"],
+          "solution": "Initialize database tables",
+          "commands": ["python init_database.py"],
+          "fix": "Run the database initialization script to create all required tables"
+        },
+        "connection_config_error": {
+          "symptoms": ["KeyError in config", "Missing configuration", "Config file not found"],
+          "solution": "Fix config.py file",
+          "fix": "Ensure config.py has correct DB_CONFIG dictionary with HOST, PORT, DATABASE, USER, PASSWORD"
+        }
+      },
+      "application": {
+        "login_failed": {
+          "symptoms": ["Invalid credentials", "Login failed", "Authentication error"],
+          "solution": "Use correct login credentials",
+          "default_credentials": {
+            "employee_id": "ADMIN001",
+            "password": "WelVision2025!",
+            "role": "Super Admin"
+          },
+          "alternative": {
+            "employee_id": "EMP003",
+            "password": "password",
+            "role": "Super Admin"
+          },
+          "fix": "Try default credentials or check users table in database"
+        },
+        "window_not_showing": {
+          "symptoms": ["Application starts but no window", "GUI not visible", "Black screen"],
+          "solution": "Check display settings and tkinter installation",
+          "commands": ["python -c \"import tkinter; tkinter.Tk().mainloop()\""],
+          "fix": "Test tkinter separately, check display settings, try different Python version"
+        },
+        "global_limits_not_working": {
+          "symptoms": ["Rollers not validating", "Can create invalid rollers", "Limits ignored"],
+          "solution": "Check global limits configuration",
+          "commands": ["SELECT * FROM global_roller_limits;"],
+          "fix": "Super Admin must set global limits in Data tab, verify table has data"
+        },
+        "ai_models_not_loading": {
+          "symptoms": ["Model not found", "YOLO error", "Inference failed"],
+          "solution": "Check AI model files and database entries",
+          "commands": [
+            "SELECT * FROM od_models WHERE is_active = TRUE;",
+            "SELECT * FROM bigface_models WHERE is_active = TRUE;"
+          ],
+          "fix": "Upload models in Model Management tab, ensure .pt files exist and are accessible"
+        }
+      },
+      "performance": {
+        "slow_database": {
+          "symptoms": ["Slow queries", "Database timeout", "Long loading times"],
+          "solution": "Optimize database performance",
+          "commands": ["ANALYZE TABLE table_name;", "SHOW PROCESSLIST;"],
+          "fix": "Run ANALYZE TABLE on large tables, check for slow queries, consider indexing"
+        },
+        "memory_issues": {
+          "symptoms": ["Out of memory", "Application crash", "High RAM usage"],
+          "solution": "Monitor memory usage during AI inference",
+          "fix": "Close other applications, use smaller batch sizes, consider system upgrade"
+        }
+      },
+      "user_management": {
+        "no_admin_user": {
+          "symptoms": ["No Super Admin found", "Cannot access admin features"],
+          "solution": "Create Super Admin user",
+          "commands": ["python init_database.py"],
+          "fix": "Run init script with option to create default admin, or manually create in database"
+        },
+        "role_permissions": {
+          "symptoms": ["Access denied to features", "Missing menu items", "Permission error"],
+          "solution": "Check user role and permissions",
+          "roles": {
+            "Super Admin": "Full access to all features",
+            "Admin": "Roller management, model management, inspection",
+            "Operator": "Inspection interface only"
+          },
+          "fix": "Verify user role in database, ensure role enum values are correct"
+        }
+      }
+    },
+    "diagnostic_commands": {
+      "quick_health_check": [
+        "python --version",
+        "python -c \"import mysql.connector; print('MySQL connector OK')\"",
+        "python -c \"from database import DatabaseManager; print('DB OK' if DatabaseManager().connect() else 'DB FAIL')\"",
+        "python system_diagnostics.py"
+      ],
+      "database_health": [
+        "mysql -u root -p -e \"SHOW DATABASES;\"",
+        "mysql -u welvision_user -p welvision_db -e \"SHOW TABLES;\"",
+        "mysql -u welvision_user -p welvision_db -e \"SELECT COUNT(*) FROM users;\"",
+        "mysql -u welvision_user -p welvision_db -e \"SELECT * FROM global_roller_limits;\""
+      ],
+      "application_test": [
+        "python -c \"import tkinter; print('Tkinter OK')\"",
+        "python -c \"from config import DB_CONFIG; print('Config OK')\"",
+        "python -c \"from main import WelVisionApp; print('Main module OK')\""
+      ]
+    },
+    "common_error_patterns": {
+      "import_errors": {
+        "pattern": "ImportError|ModuleNotFoundError",
+        "action": "Install missing package with pip"
+      },
+      "database_errors": {
+        "pattern": "mysql.connector.Error|Connection refused|Access denied",
+        "action": "Check MySQL service and credentials"
+      },
+      "tkinter_errors": {
+        "pattern": "tkinter|_tkinter|TclError",
+        "action": "Install tkinter or check display settings"
+      },
+      "file_not_found": {
+        "pattern": "FileNotFoundError|No such file",
+        "action": "Check file paths and ensure all required files exist"
+      }
+    },
+    "recovery_procedures": {
+      "complete_reset": {
+        "description": "Full system reset when everything is broken",
+        "steps": [
+          "Stop application",
+          "Backup important data if possible",
+          "Drop and recreate database",
+          "Run python init_database.py",
+          "Reconfigure settings",
+          "Test basic functionality"
+        ],
+        "commands": [
+          "mysql -u root -p -e \"DROP DATABASE IF EXISTS welvision_db;\"",
+          "mysql -u root -p -e \"CREATE DATABASE welvision_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;\"",
+          "python init_database.py",
+          "python main.py"
+        ]
+      },
+      "database_corruption": {
+        "description": "When database tables are corrupted",
+        "steps": [
+          "Check table status",
+          "Repair tables if possible",
+          "Restore from backup",
+          "Reinitialize if necessary"
+        ],
+        "commands": [
+          "mysql -u root -p welvision_db -e \"CHECK TABLE table_name;\"",
+          "mysql -u root -p welvision_db -e \"REPAIR TABLE table_name;\"",
+          "python init_database.py"
+        ]
+      }
+    },
+    "prevention_tips": {
+      "regular_maintenance": [
+        "Regular database backups",
+        "Monitor system logs",
+        "Keep dependencies updated",
+        "Test after system updates"
+      ],
+      "best_practices": [
+        "Use strong passwords",
+        "Regular user account audits",
+        "Monitor disk space",
+        "Keep AI models backed up"
+      ]
+    }
+  }
+} 

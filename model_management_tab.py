@@ -52,15 +52,12 @@ class ModelManagementTab:
         self.refresh_model_list()
     
     def create_upload_section(self, parent):
-        """Create the model upload section with drag-and-drop"""
+        """Create the model upload section"""
         # Upload section frame
         upload_frame = tk.LabelFrame(parent, text="Upload New Model", 
                                    font=("Arial", 14, "bold"), fg="white", 
                                    bg=APP_BG_COLOR, bd=2)
         upload_frame.pack(fill=tk.X, pady=(0, 20))
-        
-        # Drag and drop area
-        self.create_drag_drop_area(upload_frame)
         
         # Model details form
         self.create_model_form(upload_frame)
@@ -71,22 +68,7 @@ class ModelManagementTab:
                               command=self.browse_and_upload)
         upload_btn.pack(pady=10)
     
-    def create_drag_drop_area(self, parent):
-        """Create drag and drop area for model files"""
-        # Drag-drop frame
-        self.drop_frame = tk.Frame(parent, bg="#1e3a8a", relief=tk.RAISED, bd=3)
-        self.drop_frame.pack(fill=tk.X, padx=10, pady=10, ipady=20)
-        
-        # Drop instructions
-        drop_label = tk.Label(self.drop_frame, 
-                             text="Drag & Drop Model Files Here",
-                             font=("Arial", 12), fg="white", bg="#1e3a8a",
-                             justify=tk.CENTER)
-        drop_label.pack(expand=True)
-        
-        # Bind click event for manual file selection
-        self.drop_frame.bind("<Button-1>", lambda e: self.browse_and_upload())
-        drop_label.bind("<Button-1>", lambda e: self.browse_and_upload())
+
     
     def create_model_form(self, parent):
         """Create form for model details"""
@@ -183,6 +165,19 @@ class ModelManagementTab:
         
         table_frame.grid_rowconfigure(0, weight=1)
         table_frame.grid_columnconfigure(0, weight=1)
+        
+        # Enable mouse wheel scrolling for the model tree
+        def _on_mousewheel(event):
+            """Handle mouse wheel scrolling for the model tree"""
+            self.model_tree.yview_scroll(int(-1*(event.delta/120)), "units")
+        
+        # Bind mouse wheel events (Windows and Linux)
+        self.model_tree.bind("<MouseWheel>", _on_mousewheel)  # Windows
+        self.model_tree.bind("<Button-4>", lambda e: self.model_tree.yview_scroll(-1, "units"))  # Linux scroll up
+        self.model_tree.bind("<Button-5>", lambda e: self.model_tree.yview_scroll(1, "units"))   # Linux scroll down
+        
+        # Make the tree widget focusable so it can receive mouse wheel events
+        self.model_tree.focus_set()
         
         # Bind double-click event
         self.model_tree.bind("<Double-1>", self.on_model_double_click)

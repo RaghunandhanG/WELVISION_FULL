@@ -50,6 +50,49 @@ class PasswordManager:
             print(f"Database connection error: {e}")
             return None
     
+    def get_super_admin_count(self):
+        """Get the count of Super Admin users"""
+        connection = self.connect_db()
+        if not connection:
+            return 0
+        
+        try:
+            cursor = connection.cursor()
+            cursor.execute("SELECT COUNT(*) FROM users WHERE role = 'Super Admin' AND is_active = 1")
+            result = cursor.fetchone()
+            return result[0] if result else 0
+        except Error as e:
+            print(f"Error counting Super Admins: {e}")
+            return 0
+        finally:
+            if connection.is_connected():
+                cursor.close()
+                connection.close()
+    
+    def get_super_admin_info(self):
+        """Get information about existing Super Admin"""
+        connection = self.connect_db()
+        if not connection:
+            return None
+        
+        try:
+            cursor = connection.cursor()
+            cursor.execute("""
+                SELECT employee_id, email, created_at 
+                FROM users 
+                WHERE role = 'Super Admin' AND is_active = 1
+                LIMIT 1
+            """)
+            result = cursor.fetchone()
+            return result
+        except Error as e:
+            print(f"Error getting Super Admin info: {e}")
+            return None
+        finally:
+            if connection.is_connected():
+                cursor.close()
+                connection.close()
+    
     def create_user(self, employee_id, email, password, role):
         """Create a new user with hashed password"""
         connection = self.connect_db()
@@ -63,6 +106,16 @@ class PasswordManager:
             cursor.execute("SELECT employee_id FROM users WHERE employee_id = %s", (employee_id,))
             if cursor.fetchone():
                 return False, f"Employee ID {employee_id} already exists"
+            
+            # Check Super Admin constraint
+            if role == 'Super Admin':
+                super_admin_count = self.get_super_admin_count()
+                if super_admin_count > 0:
+                    super_admin_info = self.get_super_admin_info()
+                    if super_admin_info:
+                        return False, f"Only one Super Admin is allowed. Current Super Admin: {super_admin_info[0]} ({super_admin_info[1]})"
+                    else:
+                        return False, "Only one Super Admin is allowed in the system"
             
             # Hash the password
             hashed_password, salt = self.hash_password(password)
@@ -215,10 +268,34 @@ class PasswordManager:
         try:
             cursor = connection.cursor()
             
-            # Check if user exists
-            cursor.execute("SELECT employee_id FROM users WHERE employee_id = %s", (employee_id,))
-            if not cursor.fetchone():
+            # Check if user exists and get current role
+            cursor.execute("SELECT employee_id, role FROM users WHERE employee_id = %s", (employee_id,))
+            user_result = cursor.fetchone()
+            if not user_result:
                 return False, f"User {employee_id} not found"
+            
+            current_role = user_result[1]
+            
+            # Check Super Admin constraint when changing TO Super Admin
+            if role == 'Super Admin' and current_role != 'Super Admin':
+                super_admin_count = self.get_super_admin_count()
+                if super_admin_count > 0:
+                    super_admin_info = self.get_super_admin_info()
+                    if super_admin_info:
+                        return False, f"Only one Super Admin is allowed. Current Super Admin: {super_admin_info[0]} ({super_admin_info[1]})"
+                    else:
+                        return False, "Only one Super Admin is allowed in the system"
+            
+            # Prevent deactivating the only Super Admin
+            if current_role == 'Super Admin' and not is_active:
+                return False, "Cannot deactivate the Super Admin account. System must have an active Super Admin."
+            
+            # Prevent changing Super Admin role to something else
+            if current_role == 'Super Admin' and role != 'Super Admin':
+                return False, "Cannot change Super Admin role. Super Admin role is permanent for system security."
+            
+            # Convert boolean to integer for database compatibility
+            is_active_int = 1 if is_active else 0
             
             # Update user
             query = """
@@ -227,7 +304,7 @@ class PasswordManager:
             WHERE employee_id = %s
             """
             
-            cursor.execute(query, (email, role, is_active, employee_id))
+            cursor.execute(query, (email, role, is_active_int, employee_id))
             connection.commit()
             
             return True, f"User {employee_id} updated successfully"
@@ -240,7 +317,7 @@ class PasswordManager:
                 connection.close()
     
     def delete_user(self, employee_id):
-        """Delete user (admin function)"""
+        """Delete user (admin function) with foreign key constraint handling"""
         connection = self.connect_db()
         if not connection:
             return False, "Database connection failed"
@@ -248,12 +325,45 @@ class PasswordManager:
         try:
             cursor = connection.cursor()
             
-            # Check if user exists
-            cursor.execute("SELECT employee_id FROM users WHERE employee_id = %s", (employee_id,))
-            if not cursor.fetchone():
+            # Check if user exists and get role
+            cursor.execute("SELECT employee_id, role FROM users WHERE employee_id = %s", (employee_id,))
+            user_result = cursor.fetchone()
+            if not user_result:
                 return False, f"User {employee_id} not found"
             
-            # Delete user
+            user_role = user_result[1]
+            
+            # Prevent deleting Super Admin
+            if user_role == 'Super Admin':
+                return False, "Cannot delete Super Admin account. Super Admin is required for system security."
+            
+            # Check for foreign key dependencies
+            dependencies = []
+            
+            # Check inspection_sessions
+            cursor.execute("SELECT COUNT(*) FROM inspection_sessions WHERE employee_id = %s", (employee_id,))
+            inspection_count = cursor.fetchone()[0]
+            if inspection_count > 0:
+                dependencies.append(f"inspection_sessions ({inspection_count} records)")
+            
+            # Check manual_mode_sessions
+            cursor.execute("SELECT COUNT(*) FROM manual_mode_sessions WHERE user_id = %s", (employee_id,))
+            manual_count = cursor.fetchone()[0]
+            if manual_count > 0:
+                dependencies.append(f"manual_mode_sessions ({manual_count} records)")
+            
+            # Check settings_history
+            cursor.execute("SELECT COUNT(*) FROM settings_history WHERE user_id = %s", (employee_id,))
+            settings_count = cursor.fetchone()[0]
+            if settings_count > 0:
+                dependencies.append(f"settings_history ({settings_count} records)")
+            
+            # If there are dependencies, offer options
+            if dependencies:
+                dependency_list = ", ".join(dependencies)
+                return False, f"Cannot delete user {employee_id}. User has dependent records in: {dependency_list}. Please clean up these records first or deactivate the user instead."
+            
+            # If no dependencies, proceed with deletion
             query = "DELETE FROM users WHERE employee_id = %s"
             cursor.execute(query, (employee_id,))
             connection.commit()
@@ -267,8 +377,8 @@ class PasswordManager:
                 cursor.close()
                 connection.close()
     
-    def admin_change_password(self, admin_id, target_employee_id, new_password):
-        """Admin function to change another user's password"""
+    def deactivate_user(self, employee_id):
+        """Deactivate user instead of deleting (safer option)"""
         connection = self.connect_db()
         if not connection:
             return False, "Database connection failed"
@@ -276,17 +386,72 @@ class PasswordManager:
         try:
             cursor = connection.cursor()
             
-            # Verify admin has permission (Admin or Super Admin)
+            # Check if user exists and get role
+            cursor.execute("SELECT employee_id, role FROM users WHERE employee_id = %s", (employee_id,))
+            user_result = cursor.fetchone()
+            if not user_result:
+                return False, f"User {employee_id} not found"
+            
+            user_role = user_result[1]
+            
+            # Prevent deactivating Super Admin
+            if user_role == 'Super Admin':
+                return False, "Cannot deactivate Super Admin account. Super Admin is required for system security."
+            
+            # Deactivate user
+            query = "UPDATE users SET is_active = 0 WHERE employee_id = %s"
+            cursor.execute(query, (employee_id,))
+            connection.commit()
+            
+            return True, f"User {employee_id} deactivated successfully"
+            
+        except Error as e:
+            return False, f"Error deactivating user: {e}"
+        finally:
+            if connection.is_connected():
+                cursor.close()
+                connection.close()
+    
+    def admin_change_password(self, admin_id, target_employee_id, new_password):
+        """Admin function to change another user's password with role hierarchy"""
+        connection = self.connect_db()
+        if not connection:
+            return False, "Database connection failed"
+        
+        try:
+            cursor = connection.cursor()
+            
+            # Get admin role and verify permissions
             cursor.execute("SELECT role FROM users WHERE employee_id = %s", (admin_id,))
             admin_result = cursor.fetchone()
             
             if not admin_result or admin_result[0] not in ['Admin', 'Super Admin']:
                 return False, "Access denied: Admin privileges required"
             
-            # Check if target user exists
-            cursor.execute("SELECT employee_id FROM users WHERE employee_id = %s", (target_employee_id,))
-            if not cursor.fetchone():
+            admin_role = admin_result[0]
+            
+            # Get target user role
+            cursor.execute("SELECT employee_id, role FROM users WHERE employee_id = %s", (target_employee_id,))
+            target_result = cursor.fetchone()
+            
+            if not target_result:
                 return False, f"User {target_employee_id} not found"
+            
+            target_role = target_result[1]
+            
+            # Enforce role hierarchy permissions
+            if admin_role == 'Admin':
+                # Admin can only change User passwords
+                if target_role != 'User':
+                    return False, f"Access denied: Admin can only change User passwords, not {target_role} passwords"
+            elif admin_role == 'Super Admin':
+                # Super Admin can change Admin and User passwords, but not other Super Admin
+                if target_role == 'Super Admin' and target_employee_id != admin_id:
+                    return False, "Access denied: Cannot change another Super Admin's password"
+            
+            # Prevent changing own password through admin function
+            if admin_id == target_employee_id:
+                return False, "Use the regular change password function to change your own password"
             
             # Hash new password
             new_hash, new_salt = self.hash_password(new_password)
@@ -296,7 +461,7 @@ class PasswordManager:
             cursor.execute(query, (new_hash, new_salt, target_employee_id))
             connection.commit()
             
-            return True, f"Password changed successfully for {target_employee_id}"
+            return True, f"Password changed successfully for {target_employee_id} ({target_role})"
             
         except Error as e:
             return False, f"Error changing password: {e}"
